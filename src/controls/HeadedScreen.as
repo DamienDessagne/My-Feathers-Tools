@@ -86,7 +86,8 @@ package controls {
 			if(previousScreenID == null)
 				return;
 			
-			GameScreens.goto(previousScreenID);
+			// REPLACE WITH YOUR OWN SCREEN NAVIGATOR :
+			Samples.nav.showScreen(previousScreenID);
 		}
 	}
 }

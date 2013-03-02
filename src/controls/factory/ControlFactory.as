@@ -8,17 +8,12 @@ package controls.factory {
 	
 	import flash.text.SoftKeyboardType;
 	
-	import org.as3commons.logging.api.ILogger;
-	import org.as3commons.logging.api.getLogger;
-	
 	import starling.display.DisplayObject;
 	
 	/**
 	 * A factory to ease Feathers controls creation.
 	 */
 	public class ControlFactory {
-		private static const logger:ILogger = getLogger(ControlFactory);
-		
 		
 		/**
 		 * Returns a Label with the given text and 
