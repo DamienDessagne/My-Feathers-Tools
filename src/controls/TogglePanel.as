@@ -1,10 +1,12 @@
 package controls {
 	import controls.factory.Align;
 	import controls.factory.ControlFactory;
+	import controls.factory.LayoutFactory;
 	
 	import feathers.controls.Button;
 	import feathers.controls.ScrollContainer;
 	import feathers.core.FeathersControl;
+	import feathers.events.FeathersEventType;
 	import feathers.layout.AnchorLayout;
 	import feathers.layout.AnchorLayoutData;
 	
@@ -40,6 +42,10 @@ package controls {
 		/** Is false when the component is totally collapsed. True otherwise (ie: while expanding). */
 		public function get isExpanded():Boolean { return _isExpanded; }
 		
+		private var _isExpanding:Boolean;
+		/** Whether the panel is currently expanding. */
+		public function get isExpanding():Boolean { return _isExpanding; }
+		
 		
 		// UI COMPONENTS :
 		/** The top button that expands / collapses the content list. */
@@ -47,8 +53,21 @@ package controls {
 		
 		/** The clipped content container used to hide / show the content list. */
 		private var contentContainer:ScrollContainer;
+		
+		private var _panelContent:FeathersControl;
 		/** The content to be expanded / collapsed. */
-		public var panelContent:FeathersControl;
+		public function get panelContent():FeathersControl { return _panelContent; }
+		public function set panelContent(value:FeathersControl):void {
+			if(_panelContent == value) return;
+			if(_panelContent && contentContainer && _panelContent.parent == contentContainer)
+				contentContainer.removeChild(_panelContent);
+			_panelContent = value;
+			
+			if(_panelContent.layoutData == null) 
+				_panelContent.layoutData = new AnchorLayoutData(0, 0, NaN, 0);
+			if(contentContainer)
+				contentContainer.addChild(_panelContent);
+		}
 		
 		
 		
@@ -56,7 +75,7 @@ package controls {
 		/**
 		 * Creates a new TogglePanel with the given parameters. The panelContent is added to a
 		 * ScrollContainer with an AnchorLayout. By default, if panelContent.layoutData is not set,
-		 * the panelContent will be sticked to 0 0 NaN (CSS-like description).
+		 * the panelContent will be sticked to (0, 0, NaN, 0).
 		 * 
 		 * @param headerBtn					The button to use as a Header. If a String is supplied, a new Button with this label will be created and used 
 		 * @param panelContent				The content to show when the panel is expanded
@@ -76,37 +95,33 @@ package controls {
 				this.headerBtn = ControlFactory.getButton(headerBtn as String, Align.LEFT);
 			this.headerBtn.isToggle = true;
 			
+			// Content :
+			this.panelContent = panelContent;
+		}
+		
+		/**
+		 * Creates the content of the TogglePanel.
+		 */
+		override protected function initialize():void {
+			super.initialize();
+			
+			layout = LayoutFactory.getVLayout(0, 0);
+			
 			// Content container :
 			contentContainer = ControlFactory.getScrollContainer(ScrollContainer.SCROLL_POLICY_OFF, ScrollContainer.SCROLL_POLICY_OFF);
 			contentContainer.height = 0;
 			contentContainer.layout = new AnchorLayout();
 			
-			// Content :
-			this.panelContent = panelContent;
-			if(this.panelContent.layoutData == null)
-				this.panelContent.layoutData = new AnchorLayoutData(0, 0, NaN, 0);
-			panelContent.visible = false;
-		}
-		
-		
-		/**
-		 * Adds the behavior to the content.
-		 */
-		override protected function initialize():void {
-			super.initialize();
-			
-			// Layout :
-			layout = ControlFactory.getVLayout(0, 0);
-			
-			// Behavior :
-			panelJuggler = new Juggler();
-			Starling.juggler.add(panelJuggler);
-			headerBtn.addEventListener(Event.TRIGGERED, expandOrCollapseContent);
-			
-			// Display content :
 			addChild(headerBtn);
 			addChild(contentContainer);
-			contentContainer.addChild(panelContent);
+			if(panelContent) contentContainer.addChild(panelContent);
+			
+			// Panel toggling :
+			headerBtn.addEventListener(Event.TRIGGERED, expandOrCollapseContent);
+			
+			// Juggler :
+			panelJuggler = new Juggler();
+			Starling.juggler.add(panelJuggler);
 		}
 		
 		
@@ -150,11 +165,17 @@ package controls {
 				dispatchEventWith(EXPAND_BEGIN);
 				headerBtn.isSelected = true;
 				panelContent.visible = true;
+				_isExpanding = true;
 			};
 			
+			var onExpandComplete:Function = function():void {
+				_isExpanding = false;
+				resizeToContent();
+				dispatchEventWith(EXPAND_COMPLETE);
+			}
+			
 			expandTween.onStart = onExpand;
-			expandTween.onComplete = dispatchEventWith;
-			expandTween.onCompleteArgs = [EXPAND_COMPLETE];
+			expandTween.onComplete = onExpandComplete;
 			
 			panelJuggler.purge();
 			panelJuggler.add(expandTween);
@@ -190,5 +211,24 @@ package controls {
 		}
 		
 		
+		////////////////////
+		// CONTENT RESIZE //
+		////////////////////
+		
+		private var needResize:Boolean = false;
+		
+		public function resizeToContent():void {
+			if(!_isExpanded || (_isExpanded && _isExpanding)) return;
+			needResize = true;
+			invalidate();
+		}
+		override protected function draw():void {
+			super.draw();
+			if(needResize) {
+				trace("Resizing to content : " + contentContainer.height + " -> " + panelContent.height);
+				contentContainer.height = panelContent.height;
+				needResize = false;
+			}
+		}
 	}
 }

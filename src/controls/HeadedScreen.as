@@ -1,9 +1,12 @@
 package controls {
 	import controls.factory.ControlFactory;
+	import controls.factory.LayoutFactory;
 	
 	import feathers.controls.Button;
 	import feathers.controls.PanelScreen;
+	import feathers.events.FeathersEventType;
 	
+	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.events.Event;
 	
@@ -15,12 +18,19 @@ package controls {
 	 */
 	public class HeadedScreen extends PanelScreen {
 		
-		// UI ELEMENTS :
 		/** The optionnal Back button, in the header's leftItems. */
-		protected var backButton:Button;
+		public var backButton:Button;
 		
+		private var _previousScreenID:String;
 		/** The previous screen ID. */
-		protected var previousScreenID:String;
+		public function get previousScreenID():String { return _previousScreenID; }
+		public function set previousScreenID(value:String):void {
+			_previousScreenID = value;
+			backButton.visible = _previousScreenID != null;
+		}
+		
+		/** The screenData to be passed to the previousScreen on BACK button press. */
+		public var previousScreenData:Object;
 		
 		
 		// CONSTRUCTOR :
@@ -45,10 +55,10 @@ package controls {
 			var leftItems:Vector.<DisplayObject> = new Vector.<DisplayObject>();
 			
 			if(previousScreenID != null) { // -> add back button.
-				this.previousScreenID = previousScreenID;
 				this.backButton = ControlFactory.getButton("Back");
 				this.backButton.nameList.add(Button.ALTERNATE_NAME_BACK_BUTTON);
 				leftItems.push(backButton);
+				this.previousScreenID = previousScreenID;
 			}
 			
 			if(headerLeftItems != null) // -> add other items
@@ -60,21 +70,41 @@ package controls {
 				this.headerProperties.rightItems = headerRightItems;
 			
 			// Layout :
-			layout = ControlFactory.getVLayout(layoutGap, layoutPadding);
+			layout = LayoutFactory.getVLayout(layoutGap, layoutPadding);
 		}
 		
 		
 		/**
-		 * Inits the screen behavior.
+		 * Inits the screen's essential display for transitionning. The behavior and deeper screen's content creation should
+		 * be put in transitionComplete().
 		 */
 		override protected function initialize():void {
 			super.initialize();
 			
 			// Behavior :
 			if(previousScreenID != null) {
-				this.backButton.addEventListener(starling.events.Event.TRIGGERED, backButtonTriggered);
+				this.backButton.addEventListener(Event.TRIGGERED, backButtonTriggered);
 				this.backButtonHandler = backButtonTriggered;
 			}
+			
+			// Delay call to deeper initializing of the screen to after transition :
+			addEventListener(FeathersEventType.TRANSITION_COMPLETE, onTransitionComplete);
+		}
+		
+		/**
+		 * Simply calls the protected transitionComplete() method, for subclasses not to bother with events.
+		 */
+		private function onTransitionComplete(ev:Event):void {
+			removeEventListener(FeathersEventType.TRANSITION_COMPLETE, onTransitionComplete);
+			transitionComplete();
+		}
+		
+		/**
+		 * Called once the screen's transition in is complete.
+		 * Typically, you want to create invisible content and  add your screen's behavior in here. 
+		 */
+		protected function transitionComplete():void {
+			
 		}
 		
 		
@@ -82,12 +112,13 @@ package controls {
 		 * The back button (including hardware BACK button) handler.
 		 * If a <code>previousScreenID</code> is supplied, switches to that previous screen.
 		 */
-		protected function backButtonTriggered(ev:starling.events.Event = null):void {
+		protected function backButtonTriggered(ev:Event = null):void {
 			if(previousScreenID == null)
 				return;
 			
-			// REPLACE WITH YOUR OWN SCREEN NAVIGATOR :
-			Samples.nav.showScreen(previousScreenID);
+			owner.getScreen(previousScreenID).properties = previousScreenData;
+			owner.showScreen(previousScreenID);
+			owner.getScreen(previousScreenID).properties = null;
 		}
 	}
 }

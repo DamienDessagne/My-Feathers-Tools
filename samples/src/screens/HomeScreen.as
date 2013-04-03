@@ -7,12 +7,15 @@ package screens {
 	import controls.dialogs.LoadingDialog;
 	import controls.factory.Align;
 	import controls.factory.ControlFactory;
+	import controls.factory.LayoutFactory;
 	
 	import feathers.controls.Button;
 	import feathers.controls.Callout;
+	import feathers.controls.List;
 	import feathers.controls.ScrollContainer;
 	import feathers.controls.TextInput;
 	import feathers.core.PopUpManager;
+	import feathers.data.ListCollection;
 	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
@@ -24,14 +27,10 @@ package screens {
 	 */
 	public class HomeScreen extends HeadedScreen {
 		
-		// UI Components :
-		private var dialogBtn:Button;
-		private var inputDialogBtn:Button;
-		private var loadingDialogBtn:Button;
-		
-		private var togglePanel1:TogglePanel;
-		private var togglePanel2:TogglePanel;
-		private var togglePanel3:TogglePanel;
+		/** A simple test list to test height problems with TogglePanels displaying lists. */
+		private var list:List;
+		/** A toggle panel with a list inside it. */
+		private var toggleList:TogglePanel;
 		
 		
 		// CONSTRUCTOR :
@@ -59,55 +58,48 @@ package screens {
 		override protected function initialize():void {
 			super.initialize();
 			
-			initScreen();
-			initBehavior();
-		}
-		
-		
-		/**
-		 * Create the screen's content.
-		 */
-		private function initScreen():void {
-			
 			// Create content :
-			dialogBtn = ControlFactory.getButton("Dialog");
-			inputDialogBtn = ControlFactory.getButton("InputDialog");
-			loadingDialogBtn = ControlFactory.getButton("LoadingDialog");
+			var dialogBtn:Button = ControlFactory.getButton("Dialog");
+			var inputDialogBtn:Button = ControlFactory.getButton("InputDialog");
+			var loadingDialogBtn:Button = ControlFactory.getButton("LoadingDialog");
 			
-			togglePanel1 = new TogglePanel("My toggle panel 1", ControlFactory.getLabel("Some content ..."));
+			var togglePanel1:TogglePanel = new TogglePanel("My toggle panel 1", ControlFactory.getLabel("Some content ..."));
 			
-			togglePanel2 = new TogglePanel(
+			var togglePanel2:TogglePanel = new TogglePanel(
 				ControlFactory.getButton("My second toggle panel", Align.RIGHT),
 				ControlFactory.getLabel("Some other content ..."));
 			
 			var tp3Container:ScrollContainer = ControlFactory.getScrollContainer(ScrollContainer.SCROLL_POLICY_OFF, ScrollContainer.SCROLL_POLICY_OFF);
-			tp3Container.layout = ControlFactory.getVLayout(10, "10 25");
+			tp3Container.layout = LayoutFactory.getVLayout(10, "10 25");
 			tp3Container.addChild(ControlFactory.getLabel("Here is a more elaborate TogglePanel sample content!", true));
 			tp3Container.addChild(ControlFactory.getTextInput(false, true));
 			tp3Container.addChild(ControlFactory.getButton("OK"));
 			
-			togglePanel3 = new TogglePanel("A more elaborate toggle panel", tp3Container);
+			var togglePanel3:TogglePanel = new TogglePanel("A more elaborate toggle panel", tp3Container);
+			
+			list = new List();
+			toggleList = new TogglePanel("List height test", list);
 			
 			// Display content :
 			addChild(ControlFactory.getLabel("controls.dialogs.* samples :"));
+			addChild(toggleList);
 			addChild(dialogBtn);
 			addChild(inputDialogBtn);
 			addChild(loadingDialogBtn);
 			addChild(togglePanel1);
 			addChild(togglePanel2);
 			addChild(togglePanel3);
-		}
-		
-		/**
-		 * Add components behavior.
-		 */
-		private function initBehavior():void {
+			
+			
+			///////////////////
+			// ADD BEHAVIOR :
 			
 			// Dialogs :
 			dialogBtn.addEventListener(Event.TRIGGERED, showDialog);
 			inputDialogBtn.addEventListener(Event.TRIGGERED, showInputDialog);
 			loadingDialogBtn.addEventListener(Event.TRIGGERED, showLoadingDialog);
-			
+			toggleList.addEventListener(TogglePanel.EXPAND_BEGIN, randomUpdateList);
+			toggleList.addEventListener(TogglePanel.COLLAPSE_COMPLETE, clearList);
 			
 			// Accordion on toggle panels :
 			Accordion.create(new <TogglePanel>[togglePanel1, togglePanel2, togglePanel3]);
@@ -162,6 +154,24 @@ package screens {
 				function():void { PopUpManager.removePopUp(LoadingDialog.instance); },
 				3);
 		}
+		
+		
+		// TOGGLE LIST PANEL :
+		private function randomUpdateList(ev:Event):void {
+			var delay:Number = Math.random();
+			trace("Creating list content in " + delay + " seconds.");
+			Starling.juggler.delayCall(createListContent, delay);
+		}
+		private function createListContent():void {
+			list.dataProvider = new ListCollection(["Item1", "Item2", "Item3"]);
+			toggleList.resizeToContent();
+			trace("List content created.");
+		}
+		private function clearList(ev:Event):void {
+			list.dataProvider = null;
+			trace("List content cleared.");
+		}
+		
 		
 		
 		/**
